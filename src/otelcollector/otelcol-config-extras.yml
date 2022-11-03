@@ -1,2 +1,61 @@
 # extra settings to be merged into OpenTelemetry Collector configuration
 # do not delete this file
+# extra settings to be merged into OpenTelemetry Collector configuration
+# do not delete this file
+extensions:
+  bearertokenauth/client:
+    # adjust the authentoken
+    token: "xxxx"
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  otlp/elastic:
+    # adjust the apm server url
+    endpoint: "xxx.apm.europe-west1.gcp.cloud.es.io:443"
+    auth:
+      authenticator: bearertokenauth/client
+
+processors:
+  resource:
+    attributes:
+      - key: deployment.environment
+        action: insert
+        value: production
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 100
+    expected_new_traces_per_sec: 10
+    policies:
+      [
+        {
+          name: errors-policy,
+          type: status_code,
+          status_code: { status_codes: [ ERROR ] }
+        },
+        {
+          name: randomized-policy,
+          type: probabilistic,
+          probabilistic: { sampling_percentage: 25 }
+        },
+      ]
+
+service:
+  extensions: [bearertokenauth/client]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch,resource]
+      exporters: [otlp/elastic]
+    metrics:
+      receivers: [otlp]
+      processors: [batch,resource]
+      exporters: [otlp/elastic]
+    logs:
+      receivers: [otlp]
+      processors: [batch,resource]
+      exporters: [otlp/elastic]
